@@ -1,0 +1,31 @@
+from flask import Flask, request, jsonify
+from langchain_ollama import OllamaLLM
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Initialize Ollama model
+llm = OllamaLLM(model="llama3.1")
+
+@app.route('/')
+def index():
+    return "Ollama LLM model is running on localhost.", 200
+
+# Endpoint to interact with Ollama model
+@app.route('/ollama/invoke', methods=['POST'])
+def invoke_model():
+    # Get the user input from the request
+    data = request.json
+    query = data.get('query', '')
+
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+
+    # Invoke the Ollama model
+    response = llm.invoke(query)
+    
+    # Return the model's response
+    return jsonify({"response": response}), 200
+
+if __name__ == '__main__':
+    app.run(debug=True, host='127.0.0.1', port=5000)
