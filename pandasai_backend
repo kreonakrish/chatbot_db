@@ -1,0 +1,136 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+import openai
+import mysql.connector
+import pandas as pd
+import logging
+from pandasai import PandasAI
+from pandasai.llm.ollama import Ollama  # Replace with Llama3, ChatAnthropic, etc.
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Enable CORS
+CORS(app)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Fetch OpenAI API key from environment variable
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
+    logger.critical("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+    raise EnvironmentError("OpenAI API key not found.")
+openai.api_key = openai_api_key
+
+# Initialize OpenAI client for making API requests
+client = openai.Client()
+
+# Connect to the MySQL database with proper error handling
+try:
+    db = mysql.connector.connect(
+        host="localhost",
+        user="admin",
+        password="gUest@Sep2",
+        database="chatbot_db"
+    )
+    logger.info("Successfully connected to the MySQL database.")
+except mysql.connector.Error as err:
+    logger.critical(f"Error connecting to the MySQL database: {err}")
+    raise
+
+# Function to load job data from the database into a pandas DataFrame
+def load_job_data():
+    try:
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT job_id, job_name, status FROM Job")
+        jobs = cursor.fetchall()
+        df = pd.DataFrame(jobs, columns=["job_id", "job_name", "status"])
+        logger.info("Job data successfully loaded from database.")
+        return df
+    except Exception as e:
+        logger.error(f"Error loading job data: {e}")
+        return pd.DataFrame()
+
+# Initialize PandasAI and local LLM (Ollama)
+local_llm = Ollama()  # Replace with Llama3, ChatAnthropic, etc., if required
+pandas_ai = PandasAI(local_llm)
+
+# Function to handle data-related queries using PandasAI
+def handle_pandasai_query(query, df):
+    try:
+        # Log the user query and DataFrame shape
+        logger.info(f"User query for PandasAI: {query}")
+        logger.info(f"DataFrame shape before processing: {df.shape}")
+
+        # Use PandasAI to evaluate the query locally
+        result = pandas_ai.run(df, prompt=query)
+
+        # Log the generated SQL (or internal operation)
+        if hasattr(pandas_ai, 'generated_sql'):
+            logger.info(f"Generated SQL: {pandas_ai.generated_sql}")
+
+        # Log the result of the query or operation
+        logger.info(f"PandasAI result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error using PandasAI: {str(e)}")
+        return f"Error using PandasAI: {str(e)}"
+
+# Function to handle general queries using OpenAI
+def handle_openai_query(user_input):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant for job tracking."},
+                {"role": "user", "content": f"The user said: '{user_input}'. Please extract any job-related information like job_id, job_name, or status from the user's question."}
+            ],
+            max_tokens=100
+        )
+        bot_response = response.choices[0].message.content.strip()  # Correct way to access the response
+        logger.info(f"OpenAI successfully processed the user input: {user_input}")
+        return bot_response
+    except Exception as e:
+        logger.error(f"Error processing OpenAI request: {e}")
+        return f"Error processing OpenAI request: {e}"
+
+# Function to detect if the query is data-related (for PandasAI)
+def is_data_related_query(user_input):
+    keywords = ["summarize", "aggregate", "filter", "list", "count", "status of", "jobs", "failed", "running", "completed"]
+    return any(keyword in user_input.lower() for keyword in keywords)
+
+# Chatbot API route
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    try:
+        data = request.get_json()
+        user_input = data.get('userInput', '')
+        user_name = data.get('userName', '')
+
+        # Log the incoming user input
+        logger.info(f"Received user input: {user_input}")
+
+        # Load job data from the MySQL database
+        df = load_job_data()
+
+        # Check if the query is related to data operations (PandasAI)
+        if is_data_related_query(user_input):
+            bot_response = handle_pandasai_query(user_input, df)
+        else:
+            bot_response = handle_openai_query(user_input)
+
+        if user_name:
+            bot_response = f"Hello {user_name}, {bot_response}"
+
+        return jsonify({"botResponse": bot_response})
+
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {e}")
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+# Start the Flask app
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
