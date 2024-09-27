@@ -1,0 +1,182 @@
+import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
+import './Chatbot.css';
+
+// PopoutWindow component for pop-out functionality using React Portals
+const PopoutWindow = ({ children, onClose }) => {
+  const newWindow = useRef(null);
+  const containerEl = useRef(document.createElement('div'));
+
+  useEffect(() => {
+    newWindow.current = window.open('', '', 'width=600,height=400,left=200,top=200');
+    newWindow.current.document.body.appendChild(containerEl.current);
+
+    const handleWindowClose = () => {
+      if (onClose) onClose();
+      newWindow.current.close();
+    };
+
+    newWindow.current.addEventListener('beforeunload', handleWindowClose);
+
+    return () => {
+      newWindow.current.removeEventListener('beforeunload', handleWindowClose);
+      newWindow.current.close();
+    };
+  }, [onClose]);
+
+  return ReactDOM.createPortal(children, containerEl.current);
+};
+
+// Chatbot component with minimize functionality
+const Chatbot = () => {
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);  // New state for minimize functionality
+  const [isPoppedOut, setIsPoppedOut] = useState(false);
+  const [messages, setMessages] = useState([{ sender: 'bot', content: 'Welcome to CARIBot!' }]);
+  const [userMessage, setUserMessage] = useState('');
+  const messageEndRef = useRef(null);
+
+  // Function to auto-scroll to the bottom of the chat
+  const scrollToBottom = () => {
+    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    // Auto scroll to the bottom whenever messages change
+    scrollToBottom();
+  }, [messages]);
+
+  const toggleMaximize = () => {
+    setIsMaximized(!isMaximized);
+  };
+
+  const toggleMinimize = () => {
+    setIsMinimized(!isMinimized);  // Toggle the minimized state
+  };
+
+  const togglePopout = () => {
+    setIsPoppedOut(!isPoppedOut);
+  };
+
+  // Handle sending messages
+  const handleSendMessage = async () => {
+    if (!userMessage.trim()) return;
+
+    // Display the user's message immediately
+    const newMessage = { sender: 'user', content: userMessage };
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
+    setUserMessage(''); // Clear the input after sending
+
+    try {
+      // Send the message to the backend
+      const response = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userInput: userMessage }),
+      });
+
+      const data = await response.json();
+      // Add bot response to the chat
+      setMessages((prevMessages) => [...prevMessages, { sender: 'bot', content: data.botResponse }]);
+    } catch (error) {
+      console.error('Error sending message to backend:', error);
+    }
+  };
+
+  // Handle Enter key to send the message
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
+    }
+  };
+
+  // Render minimized chatbox icon
+  if (isMinimized) {
+    return (
+      <div className="chatbot-minimized" onClick={toggleMinimize}>
+        {/* You can customize the appearance of the minimized chat icon here */}
+        <span>💬 Open CARIBot</span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="main-page">
+        {!isPoppedOut ? (
+          <div className={`chatbot-container ${isMaximized ? 'maximized' : ''}`}>
+            <div className="chatbot-header">
+              <div className="chatbot-title">
+                <img src={require('./assets/chase_image.png')} alt="Chase Logo" className="chase-logo" />
+                <h1>CARIBot</h1>
+              </div>
+              <div className="chatbot-controls">
+                <button className="control-btn minimize-btn" onClick={toggleMinimize}>_</button>
+                <button className="control-btn maximize-btn" onClick={toggleMaximize}>
+                  {isMaximized ? '⤢' : '❒'}
+                </button>
+                <button className="control-btn popout-btn" onClick={togglePopout}>⧉</button>
+              </div>
+            </div>
+            <div className="chatbot-messages">
+              {messages.map((msg, index) => (
+                <p key={index} className={msg.sender === 'bot' ? 'bot-message' : 'user-message'}>
+                  {msg.content}
+                </p>
+              ))}
+              <div ref={messageEndRef} /> {/* This empty div is used for scrolling to the bottom */}
+            </div>
+            <div className="chatbot-footer">
+              <input
+                type="text"
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                onKeyPress={handleKeyPress}  // Handle Enter key
+                placeholder="Type your message..."
+              />
+              <button onClick={handleSendMessage}>Send</button>
+            </div>
+          </div>
+        ) : (
+          <PopoutWindow onClose={() => setIsPoppedOut(false)}>
+            <div className={`chatbot-container ${isMaximized ? 'maximized' : ''}`}>
+              <div className="chatbot-header">
+                <div className="chatbot-title">
+                  <img src={require('./assets/chase_image.png')} alt="Chase Logo" className="chase-logo" />
+                  <h1>CARIBot</h1>
+                </div>
+                <div className="chatbot-controls">
+                  <button className="control-btn minimize-btn" onClick={toggleMinimize}>_</button>
+                  <button className="control-btn maximize-btn" onClick={toggleMaximize}>
+                    {isMaximized ? '⤢' : '❒'}
+                  </button>
+                  <button className="control-btn popout-btn" onClick={togglePopout}>⧉</button>
+                </div>
+              </div>
+              <div className="chatbot-messages">
+                {messages.map((msg, index) => (
+                  <p key={index} className={msg.sender === 'bot' ? 'bot-message' : 'user-message'}>
+                    {msg.content}
+                  </p>
+                ))}
+                <div ref={messageEndRef} /> {/* This empty div is used for scrolling to the bottom */}
+              </div>
+              <div className="chatbot-footer">
+                <input
+                  type="text"
+                  value={userMessage}
+                  onChange={(e) => setUserMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}  // Handle Enter key
+                  placeholder="Type your message..."
+                />
+                <button onClick={handleSendMessage}>Send</button>
+              </div>
+            </div>
+          </PopoutWindow>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default Chatbot;
