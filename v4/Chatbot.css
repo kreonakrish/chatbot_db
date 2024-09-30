@@ -1,0 +1,144 @@
+/* Chatbot Container */
+.chatbot-container {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 350px;
+  height: 450px;
+  border: 2px solid #0f5ba7; /* Updated with the Chase Blue color */
+  border-radius: 15px;
+  background-color: #fff;
+  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease-in-out;
+  resize: both;
+  overflow: hidden;
+}
+
+.maximized {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+  z-index: 9999;
+}
+
+/* Chatbot Header */
+.chatbot-header {
+  padding: 12px;
+  background: linear-gradient(145deg, #0f5ba7, #0056b3); /* Updated with the Chase Blue color */
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 15px 15px 0 0;
+}
+
+.chatbot-title {
+  display: flex;
+  align-items: center;
+}
+
+.chase-logo {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.chatbot-controls {
+  display: flex;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 10px;
+  padding: 5px;
+}
+
+/* Chat Messages */
+.chatbot-messages {
+  flex-grow: 1;
+  padding: 15px;
+  overflow-y: auto;
+  background: linear-gradient(145deg, #f5f7fa, #e2e5ec);
+  border-top: 2px solid #ccc;
+  border-bottom: 2px solid #ccc;
+}
+
+.chatbot-footer {
+  padding: 12px;
+  background-color: #f1f1f1;
+  display: flex;
+  align-items: center;
+  border-radius: 0 0 15px 15px;
+}
+
+.chatbot-footer input {
+  flex-grow: 1;
+  padding: 10px;
+  margin-right: 8px;
+  border: 2px solid #0f5ba7; /* Updated with the Chase Blue color */
+  border-radius: 8px;
+  outline: none;
+}
+
+.chatbot-footer button {
+  background-color: #0f5ba7; /* Updated with the Chase Blue color */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.chatbot-footer button:hover {
+  background-color: #0056b3;
+}
+
+/* Bot and User Messages */
+.bot-message {
+  background-color: #e1eaff;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.user-message {
+  background-color: #d4ffea;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.chatbot-minimized {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background-color: #0074C8;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Resizable dragging from all sides */
+.resizable {
+  resize: both;
+  overflow: auto;
+  border: 1px solid #ccc;
+}
