@@ -1,0 +1,64 @@
+from flask import Flask, request, jsonify
+import openai
+
+# Initialize Flask
+app = Flask(__name__)
+
+# Setup OpenAI API Key
+openai.api_key = "YOUR_OPENAI_API_KEY"
+
+# Predefined set of similar queries
+predefined_queries = [
+    "What can you do?", 
+    "How can you help?", 
+    "What is your purpose?", 
+    "How you can help?", 
+    "What do you know?"
+]
+
+# Function to check if the user's input matches predefined sentences
+def check_for_match(user_input):
+    # OpenAI prompt to check similarity
+    prompt = f"""
+    The following are common user questions:
+    1. What can you do?
+    2. How can you help?
+    3. What is your purpose?
+    4. How you can help?
+    5. What do you know?
+
+    Given the user input: "{user_input}", determine if it matches any of these questions. 
+    If it does, reply 'Matched'. Otherwise, reply 'No Match'.
+    """
+
+    # Send the prompt to OpenAI for classification
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        max_tokens=10
+    )
+
+    result = response['choices'][0]['text'].strip()
+
+    # Check if the result is 'Matched'
+    if result == 'Matched':
+        return True
+    else:
+        return False
+
+# API Route to handle user input and respond appropriately
+@app.route('/process_user_input', methods=['POST'])
+def process_user_input():
+    data = request.json
+    user_input = data.get('user_input')
+
+    # Check if user input matches any predefined queries
+    if check_for_match(user_input):
+        response_text = "I can help finding status of the system CARI using either job_id or job_name, or can give holistic information about the system. Give me a try !! Thanks, CariBot"
+    else:
+        response_text = "I'm here to assist you with the system. Please provide your job ID or job name for specific queries."
+
+    return jsonify({"response": response_text}), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
